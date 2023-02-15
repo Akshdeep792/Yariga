@@ -18,7 +18,7 @@ import {
 } from '@mui/icons-material'
 
 import dataProvider from "@pankod/refine-simple-rest";
-import { MuiInferencer } from "@pankod/refine-inferencer/mui";
+// import { MuiInferencer } from "@pankod/refine-inferencer/mui";
 import routerProvider from "@pankod/refine-react-router-v6";
 import axios, { AxiosRequestConfig } from "axios";
 import { ColorModeContextProvider } from "contexts";
@@ -26,6 +26,7 @@ import { Title, Sider, Layout, Header } from "components/layout";
 import { Login, Home, Agents, MyProfile, PropertyDetails, AllProperties, CreateProperty, AgentProfile, EditProperty } from "pages";
 import { CredentialResponse } from "interfaces/google";
 import { parseJwt } from "utils/parse-jwt";
+// import { profile } from "console";
 
 const axiosInstance = axios.create();
 axiosInstance.interceptors.request.use((request: AxiosRequestConfig) => {
@@ -43,22 +44,42 @@ axiosInstance.interceptors.request.use((request: AxiosRequestConfig) => {
 
 function App() {
   const authProvider: AuthProvider = {
-    login: ({ credential }: CredentialResponse) => {
+    login: async ({ credential }: CredentialResponse) => {
       const profileObj = credential ? parseJwt(credential) : null;
 
       if (profileObj) {
-        localStorage.setItem(
-          "user",
-          JSON.stringify({
-            ...profileObj,
-            avatar: profileObj.picture,
-          })
+        console.log('reached')
+        const response = await fetch(
+            'http://localhost:8000/api/v1/users',
+            {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                    name: profileObj.name,
+                    email: profileObj.email,
+                    avatar: profileObj.picture,
+                }),
+            },
         );
-      }
+            console.log("reached here")
+        const data = await response.json();
+console.log('data', data)
+        if (response.status === 200) {
+            localStorage.setItem(
+                "user",
+                JSON.stringify({
+                    ...profileObj,
+                    avatar: profileObj.picture,
+                    userid: data._id,
+                }),
+            );
+        } else {
+            return Promise.reject();
+        }
+    }
+    localStorage.setItem("token", `${credential}`);
 
-      localStorage.setItem("token", `${credential}`);
-
-      return Promise.resolve();
+    return Promise.resolve();
     },
     logout: () => {
       const token = localStorage.getItem("token");
@@ -99,7 +120,7 @@ function App() {
       <GlobalStyles styles={{ html: { WebkitFontSmoothing: "auto" } }} />
       <RefineSnackbarProvider>
         <Refine
-          dataProvider={dataProvider("https://api.fake-rest.refine.dev")}
+          dataProvider={dataProvider("http://localhost:8000/api/v1")}
           notificationProvider={notificationProvider}
           ReadyPage={ReadyPage}
           catchAll={<ErrorComponent />}
